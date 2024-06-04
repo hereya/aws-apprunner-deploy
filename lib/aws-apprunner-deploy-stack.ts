@@ -12,9 +12,9 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
         super(scope, id, props);
 
 
-        const vpcId: string | undefined = this.node.tryGetContext('vpcId')
-        const env = JSON.parse(this.node.tryGetContext('hereyaProjectEnv') ?? '{}' as string);
-        const hereyaProjectRootDir: string = this.node.tryGetContext('hereyaProjectRootDir');
+        const vpcId: string | undefined = process.env['vpcId']
+        const env = JSON.parse(process.env['hereyaProjectEnv'] ?? '{}' as string);
+        const hereyaProjectRootDir: string = process.env['hereyaProjectRootDir'] as string;
         if (!hereyaProjectRootDir) {
             throw new Error('hereyaProjectRootDir context variable is required');
         }
