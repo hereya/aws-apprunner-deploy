@@ -13,5 +13,5 @@ hereya add hereya/aws-apprunner-deploy
 ## Deployment
 
 ```bash
-hereya deploy -w production
+hereya deploy -w <workspace> # Replace <workspace> with your workspace
 ```
