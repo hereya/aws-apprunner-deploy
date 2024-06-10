@@ -19,14 +19,14 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
         }
 
         const ecrRepository = process.env['ecrRepository'] as string;
-        if (!ecrRepository) {
-            throw new Error('ecrImage environment variable is required');
-        }
+        // if (!ecrRepository) {
+        //     throw new Error('ecrImage environment variable is required');
+        // }
 
         const ecrImageTag = process.env['ecrImageTag'] as string;
-        if (!ecrImageTag) {
-            throw new Error('ecrImageTag environment variable is required');
-        }
+        // if (!ecrImageTag) {
+        //     throw new Error('ecrImageTag environment variable is required');
+        // }
 
         // Look up the VPC using the parameter value
         const vpc = vpcId ? Vpc.fromLookup(this, 'MyVpc', {
