@@ -1,3 +1,6 @@
 iac: cdk
 infra: aws
 deploy: true
+dependencies:
+  hereya/ecr-build:
+    version: ""
