@@ -58,7 +58,7 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
       )
     );
 
-    const vpcConnector = new apprunner.VpcConnector(this, "VpcConnector", {
+    const vpcConnector = new apprunner.VpcConnector(this, "VpcConnectorV2", {
       vpc,
       vpcSubnets: vpc.selectSubnets({
         subnetType: vpcSubnetType as SubnetType,
