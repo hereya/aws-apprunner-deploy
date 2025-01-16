@@ -1,10 +1,10 @@
+import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 import * as cdk from "aws-cdk-lib";
 import { CfnOutput, SecretValue } from "aws-cdk-lib";
-import { Construct } from "constructs";
-import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
-import * as secrets from "aws-cdk-lib/aws-secretsmanager";
 import { SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
-import * as ecr from "aws-cdk-lib/aws-ecr";
+import * as assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as secrets from "aws-cdk-lib/aws-secretsmanager";
+import { Construct } from "constructs";
 
 export class AwsApprunnerDeployStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -19,15 +19,6 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
       throw new Error("hereyaProjectRootDir context variable is required");
     }
 
-    const ecrRepository = process.env["ecrRepository"] as string;
-    // if (!ecrRepository) {
-    //     throw new Error('ecrImage environment variable is required');
-    // }
-
-    const ecrImageTag = process.env["ecrImageTag"] as string;
-    // if (!ecrImageTag) {
-    //     throw new Error('ecrImageTag environment variable is required');
-    // }
     const vpcSubnetType = process.env["vpcSubnetType"] || SubnetType.PUBLIC;
 
     // Look up the VPC using the parameter value
@@ -65,8 +56,12 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
       }),
     });
 
+    const imageAsset = new assets.DockerImageAsset(this, 'ImageAssets', {
+      directory: hereyaProjectRootDir,
+    });
+
     const service = new apprunner.Service(this, "Service", {
-      source: apprunner.Source.fromEcr({
+      source: apprunner.Source.fromAsset({
         imageConfiguration: {
           port: 8080,
           environmentVariables: {
@@ -75,12 +70,7 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
           },
           environmentSecrets: secretEnv,
         },
-        repository: ecr.Repository.fromRepositoryName(
-          this,
-          "Repository",
-          ecrRepository
-        ),
-        tagOrDigest: ecrImageTag,
+        asset: imageAsset,
       }),
       autoDeploymentsEnabled: true,
       vpcConnector,
