@@ -1,5 +1,5 @@
 name: aws/apprunner
-version: 0.2.0
+version: 0.3.0
 description: "Deploy containerized applications to AWS App Runner with automatic VPC integration, environment variables, secrets management, and IAM policy attachment support"
 visibility: public
 iac: cdk

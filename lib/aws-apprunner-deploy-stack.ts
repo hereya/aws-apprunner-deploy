@@ -61,7 +61,8 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
         ([key, value]) =>
           !(value as string).startsWith("secret://") &&
           !key.startsWith("IAM_POLICY_") &&
-          !key.startsWith("iamPolicy")
+          !key.startsWith("iamPolicy") &&
+          !key.startsWith("useAwsVpcEndpoint")
       )
     );
 
@@ -75,39 +76,69 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
     // Create VPC endpoints for AWS services when using VPC connector
     // This ensures AppRunner can access AWS services when routing through VPC
     if (vpcConnector) {
-      // S3 Gateway Endpoint (free) - Essential for S3 access
-      vpc.addGatewayEndpoint('S3Endpoint', {
-        service: GatewayVpcEndpointAwsService.S3,
-      });
+      // S3 Gateway Endpoint (free) - Check for flag in env
+      if (env.useAwsVpcEndpointS3 === "true" || env.useAwsVpcEndpointS3 === true) {
+        vpc.addGatewayEndpoint('S3Endpoint', {
+          service: GatewayVpcEndpointAwsService.S3,
+        });
+      }
 
-      // DynamoDB Gateway Endpoint (free) - If using DynamoDB
-      if (process.env["enableDynamoDbEndpoint"] === "true") {
+      // DynamoDB Gateway Endpoint (free) - Check for flag in env
+      if (env.useAwsVpcEndpointDynamoDB === "true" || env.useAwsVpcEndpointDynamoDB === true ||
+          process.env["enableDynamoDbEndpoint"] === "true") { // Keep backward compatibility
         vpc.addGatewayEndpoint('DynamoDbEndpoint', {
           service: GatewayVpcEndpointAwsService.DYNAMODB,
         });
       }
 
       // Interface endpoints (these cost ~$7/month each, so they're optional)
-      if (process.env["enableInterfaceEndpoints"] === "true") {
-        // Secrets Manager endpoint - if using secrets
-        if (Object.keys(secretEnv).length > 0) {
-          vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
-            service: InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
-          });
-        }
+      // Secrets Manager endpoint - if using secrets and flag is set
+      if ((env.useAwsVpcEndpointSecretsManager === "true" || env.useAwsVpcEndpointSecretsManager === true) &&
+          Object.keys(secretEnv).length > 0) {
+        vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+          service: InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+        });
+      }
 
-        // CloudWatch Logs endpoint - for application logging
+      // CloudWatch Logs endpoint - for application logging
+      if (env.useAwsVpcEndpointCloudWatchLogs === "true" || env.useAwsVpcEndpointCloudWatchLogs === true) {
         vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
           service: InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
         });
+      }
 
-        // ECR endpoints - for pulling container images
+      // ECR endpoints - for pulling container images
+      if (env.useAwsVpcEndpointEcr === "true" || env.useAwsVpcEndpointEcr === true) {
         vpc.addInterfaceEndpoint('EcrApiEndpoint', {
           service: InterfaceVpcEndpointAwsService.ECR,
         });
         vpc.addInterfaceEndpoint('EcrDkrEndpoint', {
           service: InterfaceVpcEndpointAwsService.ECR_DOCKER,
         });
+      }
+
+      // Keep backward compatibility with enableInterfaceEndpoints
+      if (process.env["enableInterfaceEndpoints"] === "true") {
+        // Add all interface endpoints if the old flag is set
+        if (Object.keys(secretEnv).length > 0 &&
+            !(env.useAwsVpcEndpointSecretsManager === "true" || env.useAwsVpcEndpointSecretsManager === true)) {
+          vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+            service: InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+          });
+        }
+        if (!(env.useAwsVpcEndpointCloudWatchLogs === "true" || env.useAwsVpcEndpointCloudWatchLogs === true)) {
+          vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
+            service: InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+          });
+        }
+        if (!(env.useAwsVpcEndpointEcr === "true" || env.useAwsVpcEndpointEcr === true)) {
+          vpc.addInterfaceEndpoint('EcrApiEndpoint', {
+            service: InterfaceVpcEndpointAwsService.ECR,
+          });
+          vpc.addInterfaceEndpoint('EcrDkrEndpoint', {
+            service: InterfaceVpcEndpointAwsService.ECR_DOCKER,
+          });
+        }
       }
     }
 
