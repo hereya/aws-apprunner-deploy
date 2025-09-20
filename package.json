@@ -1,6 +1,6 @@
 {
   "name": "aws-apprunner-deploy",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "bin": {
     "aws-apprunner-deploy": "bin/aws-apprunner-deploy.js"
   },

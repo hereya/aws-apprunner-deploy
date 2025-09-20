@@ -69,6 +69,7 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
 
     const imageAsset = new assets.DockerImageAsset(this, 'ImageAssets', {
       directory: hereyaProjectRootDir,
+      platform: assets.Platform.LINUX_AMD64,
     });
 
     const service = new apprunner.Service(this, "Service", {
