@@ -3,6 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import { CfnOutput, SecretValue } from "aws-cdk-lib";
 import { SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
 import * as assets from 'aws-cdk-lib/aws-ecr-assets';
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as secrets from "aws-cdk-lib/aws-secretsmanager";
 import { Construct } from "constructs";
 
@@ -20,6 +21,13 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
     }
 
     const vpcSubnetType = process.env["vpcSubnetType"] || SubnetType.PUBLIC;
+
+    // Filter IAM policy environment variables
+    const policyEnv = Object.fromEntries(
+      Object.entries(env).filter(
+        ([key]) => key.startsWith("IAM_POLICY_") || key.startsWith("iamPolicy")
+      )
+    );
 
     // Look up the VPC using the parameter value
     const vpc = vpcId
@@ -45,7 +53,10 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
     );
     const plainEnv = Object.fromEntries(
       Object.entries(env).filter(
-        ([, value]) => !(value as string).startsWith("secret://")
+        ([key, value]) =>
+          !(value as string).startsWith("secret://") &&
+          !key.startsWith("IAM_POLICY_") &&
+          !key.startsWith("iamPolicy")
       )
     );
 
@@ -74,6 +85,24 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
       }),
       autoDeploymentsEnabled: true,
       vpcConnector,
+    });
+
+    // Add IAM policies to the service instance role
+    Object.entries(policyEnv).forEach(([key, value]) => {
+      try {
+        const policyDocument = JSON.parse(value as string);
+
+        // Handle both single statement and array of statements
+        const statements = Array.isArray(policyDocument.Statement)
+          ? policyDocument.Statement
+          : [policyDocument.Statement];
+
+        statements.forEach((statement: any) => {
+          service.addToRolePolicy(iam.PolicyStatement.fromJson(statement));
+        });
+      } catch (error) {
+        console.warn(`Failed to parse IAM policy from environment variable '${key}': ${error}`);
+      }
     });
 
     new CfnOutput(this, "ServiceUrl", {
