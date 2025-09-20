@@ -1,7 +1,12 @@
 import * as apprunner from "@aws-cdk/aws-apprunner-alpha";
 import * as cdk from "aws-cdk-lib";
 import { CfnOutput, SecretValue } from "aws-cdk-lib";
-import { SubnetType, Vpc } from "aws-cdk-lib/aws-ec2";
+import {
+  SubnetType,
+  Vpc,
+  GatewayVpcEndpointAwsService,
+  InterfaceVpcEndpointAwsService
+} from "aws-cdk-lib/aws-ec2";
 import * as assets from 'aws-cdk-lib/aws-ecr-assets';
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as secrets from "aws-cdk-lib/aws-secretsmanager";
@@ -66,6 +71,45 @@ export class AwsApprunnerDeployStack extends cdk.Stack {
         subnetType: vpcSubnetType as SubnetType,
       }),
     });
+
+    // Create VPC endpoints for AWS services when using VPC connector
+    // This ensures AppRunner can access AWS services when routing through VPC
+    if (vpcConnector) {
+      // S3 Gateway Endpoint (free) - Essential for S3 access
+      vpc.addGatewayEndpoint('S3Endpoint', {
+        service: GatewayVpcEndpointAwsService.S3,
+      });
+
+      // DynamoDB Gateway Endpoint (free) - If using DynamoDB
+      if (process.env["enableDynamoDbEndpoint"] === "true") {
+        vpc.addGatewayEndpoint('DynamoDbEndpoint', {
+          service: GatewayVpcEndpointAwsService.DYNAMODB,
+        });
+      }
+
+      // Interface endpoints (these cost ~$7/month each, so they're optional)
+      if (process.env["enableInterfaceEndpoints"] === "true") {
+        // Secrets Manager endpoint - if using secrets
+        if (Object.keys(secretEnv).length > 0) {
+          vpc.addInterfaceEndpoint('SecretsManagerEndpoint', {
+            service: InterfaceVpcEndpointAwsService.SECRETS_MANAGER,
+          });
+        }
+
+        // CloudWatch Logs endpoint - for application logging
+        vpc.addInterfaceEndpoint('CloudWatchLogsEndpoint', {
+          service: InterfaceVpcEndpointAwsService.CLOUDWATCH_LOGS,
+        });
+
+        // ECR endpoints - for pulling container images
+        vpc.addInterfaceEndpoint('EcrApiEndpoint', {
+          service: InterfaceVpcEndpointAwsService.ECR,
+        });
+        vpc.addInterfaceEndpoint('EcrDkrEndpoint', {
+          service: InterfaceVpcEndpointAwsService.ECR_DOCKER,
+        });
+      }
+    }
 
     const imageAsset = new assets.DockerImageAsset(this, 'ImageAssets', {
       directory: hereyaProjectRootDir,
